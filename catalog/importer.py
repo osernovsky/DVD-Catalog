@@ -10,7 +10,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from xml.etree import ElementTree as ET
 
-from .database import CatalogError, create_schema, missing_numbers, search, statistics, validate
+from .database import INSERT_ENTRY, CatalogError, create_schema, missing_numbers, search, statistics, validate
 
 FORBIDDEN_BYTES = bytes(value for value in range(32) if value not in (9, 10, 13))
 ARCHIVE_NUMBERS = tuple(number for number in range(1, 1518) if number != 36)
@@ -26,12 +26,6 @@ FIELDS = frozenset(
     ("NAME", "EXT", "SIZE", "DATE", "TIME", "DISK_NUM", "DISK_NAME", "DISK_TYPE", "PATH",
      "DESCRIPTION", "CRC")
 )
-INSERT_ENTRY = """
-INSERT INTO entries (
-    disc_num, kind, parent_path, name, extension, size_bytes,
-    modified_date, modified_time, name_folded
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-"""
 
 
 class FilteredInput:

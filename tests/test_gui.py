@@ -6,7 +6,9 @@ from contextlib import closing
 from importlib.util import find_spec
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from threading import Event
 from time import monotonic, sleep
+from unittest.mock import patch
 from xml.etree import ElementTree as ET
 
 if find_spec("PySide6") is None:
@@ -20,11 +22,13 @@ from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 from catalog.database import CatalogError, delete_disc, disc_numbers, folder_entries, open_catalog, validate
+from catalog.add_disc_dialog import AddDiscDialog
 from catalog.file_types import GROUP_NAMES, file_group
 from catalog.gui import CatalogWindow
 from catalog.importer import import_catalog
 from catalog.theme import GROUP, ROW_HEIGHT, SELECTION, SURFACE, apply_theme
 from test_importer import item
+from test_disc_scanner import FixtureDrive
 
 
 class CatalogGuiTests(unittest.TestCase):
@@ -83,7 +87,7 @@ class CatalogGuiTests(unittest.TestCase):
         self.assertEqual(dialog.query.font().pointSizeF(), 10)
         self.assertGreaterEqual(dialog.table.verticalHeader().defaultSectionSize(), ROW_HEIGHT)
         self.assertFalse(dialog.table.showGrid())
-        self.assertFalse(window.add_button.isEnabled())
+        self.assertTrue(window.add_button.isEnabled())
 
     def test_buttons_follow_splitter_and_find_button_is_twice_its_natural_width(self):
         window = self.open_window()
@@ -110,7 +114,6 @@ class CatalogGuiTests(unittest.TestCase):
     def test_tree_is_lazy_and_sorts_size_numerically(self):
         window = self.open_window()
         self.assertEqual([window.discs.item(row).text() for row in range(3)], ["2", "10", "37"])
-        self.assertFalse(window.add_button.isEnabled())
         folder = window.tree.topLevelItem(0)
         self.assertEqual(folder.icon(0).cacheKey(), window.icons[0].cacheKey())
         self.assertEqual(folder.childCount(), 0)
@@ -133,6 +136,117 @@ class CatalogGuiTests(unittest.TestCase):
             self.app.processEvents()
             sleep(0.005)
         self.assertIsNone(dialog.worker)
+
+    def test_add_disc_updates_existing_tree_and_search(self):
+        window = self.open_window()
+        volume = self.directory / "disc"
+        (volume / "Фильмы").mkdir(parents=True)
+        (volume / "Фильмы" / "Ньюрексан.MOV").write_bytes(b"file")
+        window.show_search()
+        dialog = window.search_window
+        dialog.query.setText("НЬЮРЕКСАН")
+        dialog.start_search()
+        self.wait_for_results(dialog)
+        self.assertEqual(dialog.results.total, 2)
+
+        proposals = []
+        def create_dialog(path, parent):
+            addition = AddDiscDialog(path, parent, drives=FixtureDrive(volume))
+
+            def start_when_ready():
+                if addition.worker is not None:
+                    QTimer.singleShot(5, start_when_ready)
+                elif addition.start.isEnabled():
+                    proposals.append(addition.number.text())
+                    addition.start.click()
+                else:
+                    addition.reject()
+
+            QTimer.singleShot(5, start_when_ready)
+            return addition
+
+        with patch("catalog.gui.AddDiscDialog", side_effect=create_dialog), patch(
+            "catalog.gui.QMessageBox.information"
+        ) as success:
+            window.add_button.click()
+        self.assertEqual(proposals, ["38"])
+        self.assertIn("Диск №38 добавлен", success.call_args.args[2])
+        self.assertEqual(window.discs.currentItem().text(), "38")
+        folder = window.tree.topLevelItem(0)
+        folder.setExpanded(True)
+        self.assertEqual(folder.child(0).text(0), "Ньюрексан.MOV")
+        self.assertEqual(dialog.results.total, 0)
+        dialog.start_search()
+        self.wait_for_results(dialog)
+        self.assertEqual(dialog.results.total, 3)
+        dialog.close()
+
+    def test_scan_progress_and_cancel_leave_event_loop_responsive(self):
+        window = self.open_window()
+        addition = AddDiscDialog(self.path, window, drives=FixtureDrive(self.directory))
+        addition.show()
+        addition.discover()
+        self.wait_for_results(addition)
+        baseline = self.path.read_bytes()
+        event_loop_ran = Event()
+
+        def pending(path, number, volume, drives, control, progress):
+            progress("Тестовый путь", 4, 1)
+            deadline = monotonic() + 3
+            while monotonic() < deadline:
+                control.check()
+                sleep(0.01)
+            raise CatalogError("Отмена не поступила")
+
+        def cancel_when_displayed():
+            if addition.worker is not None:
+                if "Тестовый путь" not in addition.status.text():
+                    QTimer.singleShot(5, cancel_when_displayed)
+                    return
+                event_loop_ran.set()
+                addition.cancel_button.click()
+
+        with patch("catalog.add_disc_dialog.scan_and_add", side_effect=pending):
+            addition.start.click()
+            QTimer.singleShot(5, cancel_when_displayed)
+            self.wait_for_results(addition)
+        self.assertTrue(event_loop_ran.is_set())
+        self.assertFalse(addition.isVisible())
+        self.assertIsNone(addition.added)
+        self.assertEqual(self.path.read_bytes(), baseline)
+
+    def test_add_dialog_chooses_readable_volume_and_rejects_occupied_number(self):
+        window = self.open_window()
+        first, second = self.directory / "first", self.directory / "second"
+        first.mkdir()
+        second.mkdir()
+        (second / "Второй диск.TXT").write_bytes(b"demo")
+        drives = FixtureDrive(first)
+        other = FixtureDrive(second).medium
+        addition = AddDiscDialog(self.path, window, drives=drives)
+        addition.show()
+        with patch.object(drives, "roots", return_value=[first, second]), patch.object(
+            drives, "volume", side_effect=lambda root: other if root == second else drives.medium
+        ):
+            addition.discover()
+            self.wait_for_results(addition)
+            self.assertTrue(addition.drive.isEnabled())
+            self.assertEqual(addition.drive.count(), 2)
+            self.assertEqual(addition.number.text(), "38")
+            addition.drive.setCurrentIndex(1)
+            addition.number.setText("37")
+            addition.start.click()
+            self.wait_for_results(addition)
+            self.assertIn("№37 уже есть", addition.status.text())
+            self.assertTrue(addition.start.isEnabled())
+            addition.number.setText("36")
+            addition.start.click()
+            self.wait_for_results(addition)
+        self.assertEqual(addition.added, (36, 1, 0))
+        with open_catalog(self.path) as db:
+            self.assertEqual(disc_numbers(db), (2, 10, 36, 37))
+            added, = folder_entries(db, 36, "")
+            self.assertEqual(added["display_name"], "Второй диск.TXT")
 
     def test_search_via_enter_handles_casefold_and_all_batches(self):
         window = self.open_window()

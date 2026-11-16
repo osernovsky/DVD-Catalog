@@ -17,6 +17,7 @@
 /stage_02a/
 /stage_02b/
 /stage_02b_layout/
+/stage_03/
 
 # Локальная среда, кэши и сборка
 .qt/

@@ -39,6 +39,13 @@ CREATE INDEX entries_by_parent ON entries(disc_num, parent_path);
 
 RESULT_COLUMNS = "disc_num, kind, display_name, full_path, size_bytes, modified_date, modified_time"
 SELECT_RESULTS = f"SELECT {RESULT_COLUMNS} FROM entries"
+INSERT_ENTRY = """
+INSERT INTO entries (
+    disc_num, kind, parent_path, name, extension, size_bytes,
+    modified_date, modified_time, name_folded
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+"""
+MAX_SQLITE_INTEGER = 2**63 - 1
 
 
 class CatalogError(Exception):
@@ -107,6 +114,35 @@ def delete_disc(path: Path, disc_num):
         deleted = db.execute("DELETE FROM discs WHERE disc_num = ?", (disc_num,))
         if deleted.rowcount != 1:
             raise CatalogError(f"Диск №{disc_num} отсутствует")
+
+
+def next_disc_number(db):
+    maximum = db.execute("SELECT COALESCE(MAX(disc_num), 0) FROM discs").fetchone()[0]
+    return maximum + 1 if maximum < MAX_SQLITE_INTEGER else None
+
+
+def check_disc_number(db, number):
+    if not 1 <= number <= MAX_SQLITE_INTEGER:
+        raise CatalogError("Введите положительный номер диска в диапазоне SQLite.")
+    if db.execute("SELECT 1 FROM discs WHERE disc_num = ?", (number,)).fetchone():
+        raise CatalogError(f"Диск №{number} уже есть в каталоге.")
+
+
+def insert_optical_disc(path, number, label, entries, *, check_cancelled, before_commit):
+    """Принимает метаданные полного успешного обхода."""
+    def parameters():
+        for entry in entries:
+            check_cancelled()
+            yield (number, *entry)
+
+    with open_catalog(path, writable=True, timeout=1) as db, db:
+        check_cancelled()
+        db.execute("PRAGMA synchronous = FULL")
+        db.execute("BEGIN IMMEDIATE")
+        check_disc_number(db, number)
+        db.execute("INSERT INTO discs VALUES (?, ?, 'Optical')", (number, label))
+        db.executemany(INSERT_ENTRY, parameters())
+        before_commit()
 
 
 def validate(db):
