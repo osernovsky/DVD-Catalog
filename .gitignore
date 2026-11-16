@@ -1,0 +1,41 @@
+# Исходные архивы и рабочие файлы SQLite
+/input/
+*.[xX][mM][lL]
+*.[cC][tT][fF]
+*.[bB][aA][kK]
+*.[dD][bB]
+*.[dD][bB]3
+*.[sS][qQ][lL][iI][tT][eE]
+*.[sS][qQ][lL][iI][tT][eE]3
+*-journal
+*-wal
+*-shm
+.catalog-import-*/
+
+# Снимки с именами и путями из реального архива
+/stage_02/
+/stage_02a/
+/stage_02b/
+/stage_02b_layout/
+
+# Локальная среда, кэши и сборка
+.qt/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+build/
+dist/
+
+# Временные и локальные файлы
+*.[tT][mM][pP]
+*.[tT][eE][mM][pP]
+*.swp
+*.swo
+*~
+~$*
+.env
+.env.*
