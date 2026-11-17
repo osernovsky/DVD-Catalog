@@ -1,4 +1,4 @@
-"""Технические команды импорта и проверки для этапа 1."""
+"""Команды DVD Catalog для импорта, проверки, поиска и запуска интерфейса."""
 
 import argparse
 import json
@@ -7,7 +7,8 @@ import sys
 from pathlib import Path
 
 from .database import CatalogError, disc_entries, missing_numbers, open_catalog, search, statistics, validate
-from .importer import ARCHIVE_EXAMPLES, import_catalog
+from .importer import ARCHIVE_PART_SUFFIXES, import_catalog
+from .launch_paths import default_database
 
 
 def print_json(value):
@@ -27,7 +28,7 @@ def main():
         elif command == "search":
             action.add_argument("query")
     gui = commands.add_parser("gui", help="Открыть графический каталог")
-    gui.add_argument("--db", type=Path, default=Path(__file__).resolve().parents[1] / "catalog.db")
+    gui.add_argument("--db", type=Path, default=default_database())
     args = parser.parse_args()
     if args.command == "search" and not args.query:
         parser.error("Введите непустую строку поиска")
@@ -57,9 +58,9 @@ def main():
                     "database_bytes": args.db.stat().st_size,
                     "archive_examples": [
                         dict(row)
-                        for number, name in ARCHIVE_EXAMPLES.items()
+                        for number, suffix in ARCHIVE_PART_SUFFIXES.items()
                         for row in disc_entries(db, number)
-                        if row["kind"] == "File" and row["display_name"] == name
+                        if row["kind"] == "File" and row["display_name"].casefold().endswith(suffix)
                     ],
                 })
             elif args.command == "disc":

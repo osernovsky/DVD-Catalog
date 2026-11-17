@@ -13,7 +13,7 @@ from catalog.database import CatalogError, open_catalog, search, validate
 from catalog.importer import FilteredInput, import_catalog, iter_items
 
 
-def item(name="Ньюрексан", *, disc=35, kind="File", parent="\\", ext=None,
+def item(name="Кинопроект", *, disc=35, kind="File", parent="\\", ext=None,
          size=4_702_610_286, label="Архив", media="CD-R"):
     element = ET.Element("ITEM", ItemType=kind)
     fields = {
@@ -81,9 +81,9 @@ class ImportTests(unittest.TestCase):
             self.assertEqual(db.execute("PRAGMA journal_mode").fetchone()[0], "delete")
             self.assertEqual(db.execute("PRAGMA foreign_keys").fetchone()[0], 1)
             self.assertEqual(validate(db)["integrity_check"], "ok")
-            hits = list(search(db, "ьЮРЕК"))
+            hits = list(search(db, "нОПРО"))
             self.assertEqual([row["disc_num"] for row in hits], [35, 37])
-            self.assertEqual([row["full_path"] for row in hits], ["Ньюрексан"] * 2)
+            self.assertEqual([row["full_path"] for row in hits], ["Кинопроект"] * 2)
             video, = search(db, ".avi")
             self.assertEqual(video["full_path"], deep_path[1:] + "\\Съёмка.AVI")
             self.assertEqual(video["size_bytes"], 4_702_610_286)
@@ -99,14 +99,14 @@ class ImportTests(unittest.TestCase):
                              [(35, "Архив", "CD-R"), (37, "Архив", "DVD+R")])
 
     def test_filters_only_forbidden_c0(self):
-        self.write_report(item("Нью\x00рек\x01сан\t\n"))
+        self.write_report(item("Кин\x00опр\x01оект\t\n"))
         original = self.source.read_bytes()
         report = self.import_fixture()
         self.assertEqual(report["removed_xml_bytes"], 2)
         self.assertEqual(self.source.read_bytes(), original)
         with open_catalog(self.target) as db:
-            match, = search(db, "НЬЮРЕКСАН")
-            self.assertEqual(match["display_name"], "Ньюрексан\t\n")
+            match, = search(db, "КИНОПРОЕКТ")
+            self.assertEqual(match["display_name"], "Кинопроект\t\n")
         source = FilteredInput(io.BytesIO(b"\x00\x01\t\n\r\x7f"))
         self.assertEqual(source.read(2), b"\t\n")
         self.assertEqual(source.read(2), b"\r\x7f")
@@ -143,7 +143,7 @@ class ImportTests(unittest.TestCase):
 
     def test_incomplete_archive_is_rejected_by_default(self):
         self.write_report(item())
-        with self.assertRaisesRegex(CatalogError, "Расхождения с XML_AUDIT"):
+        with self.assertRaisesRegex(CatalogError, "Расхождения с ожидаемыми показателями"):
             import_catalog(self.source, self.target)
         self.assert_unpublished()
 

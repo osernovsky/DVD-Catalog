@@ -17,6 +17,8 @@
 /stage_02a/
 /stage_02b/
 /stage_02b_layout/
+/stage_03/
+/stage_04/
 
 # Локальная среда, кэши и сборка
 .qt/
@@ -29,6 +31,7 @@ __pycache__/
 .ruff_cache/
 build/
 dist/
+/DVD-Catalog*.zip
 
 # Временные и локальные файлы
 *.[tT][mM][pP]

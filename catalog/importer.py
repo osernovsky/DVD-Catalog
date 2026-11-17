@@ -10,7 +10,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from xml.etree import ElementTree as ET
 
-from .database import CatalogError, create_schema, missing_numbers, search, statistics, validate
+from .database import INSERT_ENTRY, CatalogError, create_schema, missing_numbers, search, statistics, validate
 
 FORBIDDEN_BYTES = bytes(value for value in range(32) if value not in (9, 10, 13))
 ARCHIVE_NUMBERS = tuple(number for number in range(1, 1518) if number != 36)
@@ -21,17 +21,11 @@ ARCHIVE_TOTALS = {
     "extensionless_files": 1744, "max_parent_depth": 11, "max_size_bytes": 4_702_610_286,
     "total_file_bytes": 6_089_351_489_878,
 }
-ARCHIVE_EXAMPLES = {1514: "Slavneft 2026.part1.rar", 1515: "Slavneft 2026.part2.rar"}
+ARCHIVE_PART_SUFFIXES = {1514: ".part1.rar", 1515: ".part2.rar"}
 FIELDS = frozenset(
     ("NAME", "EXT", "SIZE", "DATE", "TIME", "DISK_NUM", "DISK_NAME", "DISK_TYPE", "PATH",
      "DESCRIPTION", "CRC")
 )
-INSERT_ENTRY = """
-INSERT INTO entries (
-    disc_num, kind, parent_path, name, extension, size_bytes,
-    modified_date, modified_time, name_folded
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-"""
 
 
 class FilteredInput:
@@ -174,12 +168,13 @@ def verify_archive(db, source, numbers, totals):
         missing = sorted(set(ARCHIVE_NUMBERS).difference(numbers))
         extra = sorted(set(numbers).difference(ARCHIVE_NUMBERS))
         differences.append(f"Не совпали номера дисков. Недостающие: {missing}, лишние: {extra}")
-    for number, name in ARCHIVE_EXAMPLES.items():
-        if not any(row[0] == number and row[1] == "File" and row[2] == name
-                   for row in search(db, name)):
-            differences.append(f"На диске №{number} отсутствует контрольный файл {name!r}")
+    for number, suffix in ARCHIVE_PART_SUFFIXES.items():
+        if not any(row[0] == number and row[1] == "File" and row[2].casefold().endswith(suffix)
+                   for row in search(db, suffix)):
+            differences.append(f"На диске №{number} отсутствует часть архива {suffix!r}")
     if differences:
-        raise CatalogError("Расхождения с XML_AUDIT.md или SPEC.md:\n" + "\n".join(differences))
+        raise CatalogError("Расхождения с ожидаемыми показателями архива WhereIsIt:\n" +
+                           "\n".join(differences))
 
 
 def import_catalog(xml_path: Path, destination: Path, *, verify_full_archive=True):

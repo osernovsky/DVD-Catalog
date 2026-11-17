@@ -1,0 +1,5 @@
+
+
+Qt qtsvg 6.12.0 upstream attribution index.
+This includes optional components that may be absent from this package.
+https://github.com/qt/qtsvg/tree/v6.12.0

@@ -1,14 +1,16 @@
 """Главное окно DVD Catalog для Windows."""
 
 import sqlite3
+import sys
 
 from PySide6.QtCore import QByteArray, QSettings, QSize, Qt, Slot
 from PySide6.QtWidgets import (
-    QApplication, QListWidget, QListWidgetItem, QMainWindow, QMenu, QMessageBox,
+    QApplication, QDialog, QListWidget, QListWidgetItem, QMainWindow, QMenu, QMessageBox,
     QPushButton, QSplitter, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QWidget,
 )
 
 from .database import CatalogError, delete_disc, disc_numbers, folder_entries, open_catalog
+from .add_disc_dialog import AddDiscDialog
 from .file_icons import file_icons
 from .file_types import file_group
 from .search_window import ALIGN_RIGHT, SearchWindow, format_date, format_size
@@ -47,8 +49,7 @@ class CatalogWindow(QMainWindow):
         self.search_window = None
 
         self.add_button = QPushButton("ДОБАВИТЬ ДИСК")
-        self.add_button.setEnabled(False)
-        self.add_button.setToolTip("Добавление физических дисков появится на следующем этапе")
+        self.add_button.clicked.connect(self.add_disc)
         self.search_button = QPushButton("ПОИСК")
         self.search_button.setProperty("primaryAction", True)
         self.search_button.clicked.connect(self.show_search)
@@ -103,11 +104,38 @@ class CatalogWindow(QMainWindow):
             # Проверяем также доступность таблицы элементов перед открытием окна.
             db.execute("SELECT display_name, extension FROM entries LIMIT 1").fetchone()
         for number in numbers:
-            item = QListWidgetItem(str(number), self.discs)
-            item.setData(DATA_ROLE, number)
-            item.setSizeHint(QSize(0, max(ROW_HEIGHT, self.discs.fontMetrics().height() + 8)))
+            self.discs.addItem(self.disc_item(number))
         if numbers:
             self.discs.setCurrentRow(0)
+
+    def disc_item(self, number):
+        item = QListWidgetItem(str(number))
+        item.setData(DATA_ROLE, number)
+        item.setSizeHint(QSize(0, max(ROW_HEIGHT, self.discs.fontMetrics().height() + 8)))
+        return item
+
+    @Slot()
+    def add_disc(self):
+        dialog = AddDiscDialog(self.path, self)
+        dialog.discover()
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            dialog.deleteLater()
+            return
+        number, files, folders, eject_error = dialog.added
+        dialog.deleteLater()
+        row = next((i for i in range(self.discs.count())
+                    if self.discs.item(i).data(DATA_ROLE) > number), self.discs.count())
+        item = self.disc_item(number)
+        self.discs.insertItem(row, item)
+        self.discs.setCurrentItem(item)
+        self.discs.scrollToItem(item)
+        if self.search_window is not None:
+            self.search_window.invalidate()
+        message = f"Диск №{number} добавлен.\nФайлов: {files} · Папок: {folders}"
+        if eject_error:
+            QMessageBox.warning(self, "Добавление диска", f"{message}\n\n{eject_error}")
+        else:
+            QMessageBox.information(self, "Добавление диска", message)
 
     def read_branch(self, disc_num, path):
         with open_catalog(self.path, timeout=1) as db:
@@ -199,7 +227,10 @@ def run_gui(path):
             raise CatalogError("Файл базы не найден")
         window = CatalogWindow(path, settings)
     except READ_ERRORS as error:
-        QMessageBox.critical(None, "DVD Catalog", f"Не удалось открыть каталог.\n{path}\n{error}")
+        message = f"Не удалось открыть каталог.\n{path.resolve()}\n{error}"
+        if getattr(sys, "frozen", False):
+            message += "\n\nПоместите исправный пользовательский файл catalog.db рядом с DVD-Catalog.exe."
+        QMessageBox.critical(None, "DVD Catalog", message)
         return 1
     window.show()
     return app.exec()

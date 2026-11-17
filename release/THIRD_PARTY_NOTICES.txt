@@ -1,0 +1,73 @@
+DVD Catalog 1.0 Beta 1
+Сторонние компоненты / Third-party notices
+
+Лицензия MIT в корне комплекта распространяется на собственный код DVD Catalog.
+Условия сторонних лицензий применяются к соответствующим компонентам.
+Приложенные тексты и уведомления находятся в _internal/third-party-licenses/.
+
+Python 3.12.14 и стандартная библиотека Python
+Copyright Python Software Foundation и другие правообладатели.
+Лицензии PSF и вложенных компонентов приведены в Python-LICENSE.txt.
+https://www.python.org/downloads/release/python-31214/
+https://github.com/python/cpython/tree/v3.12.14
+
+PyInstaller 6.22.3, загрузчик Windows
+GPL с исключением для распространения собранных приложений.
+См. PyInstaller-COPYING.txt.
+https://github.com/pyinstaller/pyinstaller/tree/v6.22.3
+https://pyinstaller.org/en/stable/license.html
+
+Qt 6.12.0, PySide6 Essentials 6.12.0 и Shiboken6 6.12.0
+Copyright The Qt Company Ltd. и участники проектов.
+В комплекте динамические модули Qt Core, Gui, Widgets, Network, SVG,
+плагины Windows и форматов изображений, DLL и модули PySide6/Shiboken6.
+Открытые условия распространения LGPLv3, см. LGPL-3.0.txt и GPL-3.0.txt.
+Компоненты, встроенные в Qt, имеют собственные условия, см. файлы
+qtbase-6.12.0-NOTICES.txt, qtsvg-6.12.0-NOTICES.txt и
+qtimageformats-6.12.0-NOTICES.txt.
+https://doc.qt.io/qt-6/licensing.html
+https://doc.qt.io/qtforpython-6/licenses.html
+https://github.com/qt/qtbase/tree/v6.12.0
+https://github.com/qt/qtsvg/tree/v6.12.0
+https://github.com/qt/qtimageformats/tree/v6.12.0
+https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.12.0-src/
+
+Qt DLL, Qt-плагины и PySide6/Shiboken6 размещены отдельными файлами.
+На копии комплекта при закрытой программе замените соответствующие DLL,
+.pyd и плагины в _internal ABI-совместимыми сборками для Windows x64,
+сохраняя их имена и расположение. Условия MIT на приложение не ограничивают
+модификацию LGPL-компонентов или обратную разработку для её отладки.
+
+SQLite 3.53.1 (sqlite3.dll)
+Общественное достояние. https://sqlite.org/copyright.html
+
+OpenSSL 3.5.8 (libcrypto-3-x64.dll)
+Apache License 2.0, см. OpenSSL-LICENSE.txt.
+https://github.com/openssl/openssl/tree/openssl-3.5.8
+
+libffi (libffi-8.dll)
+Лицензия с разрешительными условиями, см. libffi-LICENSE.txt.
+https://github.com/libffi/libffi
+
+Библиотеки CPython для сжатия и точной арифметики
+bzip2 1.0.8, см. Python-LICENSE.txt.
+XZ Utils/liblzma и libmpdec входят в модули _lzma.pyd и _decimal.pyd.
+См. xz-COPYING.txt, xz-0BSD.txt и mpdecimal-LICENSE.txt.
+https://tukaani.org/xz/
+https://www.bytereef.org/mpdecimal/
+https://github.com/python/cpython/tree/v3.12.14/Modules/_decimal/libmpdec
+
+Mesa llvmpipe 11.2.2 и LLVM 3.6.2 (opengl32sw.dll)
+Резервный программный OpenGL Qt, см. документацию с инструкциями сборки
+и атрибуцией VMware, участников Mesa и LLVM. См. Mesa-11.2.2-LICENSE.txt
+и LLVM-3.6.2-LICENSE.txt.
+https://wiki.qt.io/MesaLlvmpipe
+https://download.qt.io/development_releases/prebuilt/llvmpipe/windows/
+https://releases.llvm.org/3.6.2/
+
+Microsoft Visual C++ 14.44 Runtime (MSVCP140*.dll, VCRUNTIME140*.dll)
+Copyright Microsoft Corporation. Microsoft распространяет эти компоненты
+на условиях для распространяемого кода Visual C++.
+https://learn.microsoft.com/cpp/windows/redistributing-visual-cpp-files
+
+Значки файлов DVD Catalog генерируются собственным кодом приложения.
