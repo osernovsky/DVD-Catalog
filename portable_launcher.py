@@ -15,7 +15,7 @@ def main():
         message = (
             f"Не удалось запустить DVD Catalog.\n{error}\n\n"
             f"Ожидаемый файл базы: {default_database()}\n"
-            "Проверьте наличие папки _internal и файла catalog.db рядом с DVD-Catalog.exe."
+            "Проверьте наличие файла catalog.db рядом с DVD-Catalog.exe и доступ к папке программы."
         )
         ctypes.windll.user32.MessageBoxW(None, message, "DVD Catalog", 0x10)
         return 1

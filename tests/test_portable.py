@@ -7,6 +7,7 @@ from unittest.mock import patch
 from zipfile import ZipFile
 
 from build_portable import EXE, NAME, verify_tree, write_zip
+from build_onefile import build_onefile
 from catalog.database import CatalogError, open_catalog
 from catalog.launch_paths import default_database
 
@@ -20,11 +21,31 @@ class PortableTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             base = Path(directory).resolve()
             folder = base / "Копия каталога"
-            with patch.object(sys, "frozen", True, create=True), patch.object(
-                sys, "executable", str(folder / EXE)
-            ), patch.object(sys, "_MEIPASS", str(folder / "_internal"), create=True):
-                self.assertEqual(default_database(), folder / "catalog.db")
-                self.assertNotEqual(folder, Path.cwd())
+            for libraries in (folder / "_internal", base / "Temp" / "_MEI12345"):
+                with self.subTest(libraries=libraries), patch.object(
+                    sys, "frozen", True, create=True
+                ), patch.object(sys, "executable", str(folder / EXE)), patch.object(
+                    sys, "_MEIPASS", str(libraries), create=True
+                ):
+                    self.assertEqual(default_database(), folder / "catalog.db")
+                    self.assertNotEqual(folder, Path.cwd())
+
+    def test_onefile_build_refuses_existing_user_folder_and_zip(self):
+        with TemporaryDirectory() as directory:
+            output = Path(directory) / "Однофайловая сборка"
+            output.mkdir()
+            user_db = output / "catalog.db"
+            user_db.write_bytes(b"existing catalog")
+            with self.assertRaises(FileExistsError):
+                build_onefile(output)
+            self.assertEqual(user_db.read_bytes(), b"existing catalog")
+            user_db.unlink()
+            output.rmdir()
+            archive = output.with_name(f"{output.name}-Windows-x64.zip")
+            archive.write_bytes(b"existing zip")
+            with self.assertRaises(FileExistsError):
+                build_onefile(output)
+            self.assertEqual(archive.read_bytes(), b"existing zip")
 
     def test_package_and_zip_reject_database_and_require_windows_plugin(self):
         with TemporaryDirectory() as directory:

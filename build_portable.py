@@ -34,7 +34,12 @@ def verify_tree(package):
         path.name.lower() == "qwindows.dll" and path.parent.name == "platforms" for path in members
     ):
         raise ValueError("В сборке отсутствует EXE или плагин Qt для Windows.")
-    with (package / EXE).open("rb") as stream:
+    verify_executable(package / EXE)
+    return sorted(members)
+
+
+def verify_executable(executable):
+    with executable.open("rb") as stream:
         dos = stream.read(64)
         if dos[:2] != b"MZ":
             raise ValueError("Некорректный заголовок EXE.")
@@ -43,7 +48,6 @@ def verify_tree(package):
         if (pe[:4] != b"PE\0\0" or struct.unpack_from("<H", pe, 4)[0] != 0x8664
                 or struct.unpack_from("<H", pe, 92)[0] != 2):
             raise ValueError("Требуется оконный EXE Windows x64.")
-    return sorted(members)
 
 
 def write_zip(package, archive, members):
