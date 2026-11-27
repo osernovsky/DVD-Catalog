@@ -1,4 +1,4 @@
-DVD Catalog 1.0 Beta 1
+DVD Catalog 1.0 Beta 2
 Сторонние компоненты / Third-party notices
 
 Лицензия MIT распространяется на собственный код DVD Catalog.

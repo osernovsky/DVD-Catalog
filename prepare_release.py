@@ -11,7 +11,7 @@ from zipfile import ZipFile
 from build_portable import NAME, PROJECT, publication_stage, verify_tree, write_zip
 from catalog.database import SCHEMA_VERSION, create_schema, next_disc_number, open_catalog
 
-TAG = "v1.0.0-beta.1"
+TAG = "v1.0.0-beta.2"
 INSTALL = f"{NAME}-{TAG}-Windows-x64.zip"
 UPDATE = f"{NAME}-{TAG}-Update-Windows-x64.zip"
 DB = Path("catalog.db")
